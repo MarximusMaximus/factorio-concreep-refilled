@@ -1,0 +1,11 @@
+{
+  "name": "concreep-refilled",
+  "version": "1.5.0",
+  "title": "Concreep Refilled",
+  "author": "Mylon, MarximusMaximus",
+  "contact": "marximus@marximus.com",
+  "homepage": "https://marximus.com",
+  "description": "Roboports automatically place and upgrade concrete and landfill within their reach.",
+  "factorio_version": "1.1",
+  "dependencies": ["base >= 1.1.48"]
+}
