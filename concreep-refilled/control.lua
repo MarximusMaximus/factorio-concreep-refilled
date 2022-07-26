@@ -107,7 +107,7 @@ function reinit()
 	if not global.reinit_level_running then
 		global.reinit_level_running = 0
 	end
-	
+
 	-- okay, do the real work now
 	_reinit_reentrant()
 end
@@ -178,7 +178,7 @@ function _reinit_reentrant_level1_body()
 				end
 			end
 			-- if we got here:
-			--  - we either exhausted the list of surfaces (so return true) or 
+			--  - we either exhausted the list of surfaces (so return true) or
 			--  - we reached SURFACES_PER_REINIT_PASS for this call (so return false)
 			if global.reinit_surface_index > #global.reinit_surfaces then
 				_reinit_reentrant_level1_end()
@@ -250,9 +250,9 @@ function creepers_update()
 	debug_print_function_was_called("creepers_update()")
 
 	-- Iterate over up to 5 entities
-	if #global.creepers == 0 or global.reinit_level_running > 0 then 
+	if #global.creepers == 0 or global.reinit_level_running > 0 then
 		reinit()
-		return 
+		return
 	end
 	for i = 1, CREEPERS_PER_UPDATE do
 		-- bounds check, early bail
@@ -264,12 +264,12 @@ function creepers_update()
 		if creeper ~= nil then
 			local roboport = creeper.roboport
 			if (
-				is_valid_roboport(roboport) and 
+				is_valid_roboport(roboport) and
 				is_roboport_powered_up(roboport)
 			) then
 				creep(creeper)
 			end
-		else	
+		else
 			debug_print("creeper removed")
 		end
     end
@@ -318,8 +318,8 @@ function creep(creeper)
 	local landfill_count = math.max(0, roboport.logistic_network.get_item_count("landfill") - MINIMUM_ITEM_COUNT)
 
 	debug_print(
-		" brick: " .. brick_count .. 
-		" concrete: " .. concrete_count .. 
+		" brick: " .. brick_count ..
+		" concrete: " .. concrete_count ..
 		" refined: " .. refined_concrete_count ..
 		" landfill: " .. landfill_count
 	)
@@ -355,28 +355,28 @@ function creep(creeper)
 	debug_print("checking for coverable tiles with radius " .. radius)
 
 	local coverable_tiles = surface.find_tiles_filtered{has_hidden_tile=false, area=area, limit=idle_robots, collision_mask="ground-tile"}
-	
+
 	local landfill_tiles = {}
 	if settings.global["cover landfill"].value then
 		debug_print("checking for coverable landfill")
-		if count < landfill_count and landfill_count > 0 then 
+		if count < landfill_count and landfill_count > 0 then
 			landfill_tiles = surface.find_tiles_filtered{name={"landfill", "unbreakable-landfill", "unbreakable-landfill-2"}, area=area, limit=idle_robots}
 		else
 			debug_print("not enough landfill")
 		end
 	end
 	debug_print("initial coverable tiles: " .. #coverable_tiles .. " + landfill tiles:  " .. #landfill_tiles)
-	
+
 	coverable_tiles = array_concat(coverable_tiles, landfill_tiles)
 
 	debug_print("total coverable tiles: " .. #coverable_tiles)
-	-- water-mud, water-shallow, deepwater-green, water-green, deepwater, water, 
-	
+	-- water-mud, water-shallow, deepwater-green, water-green, deepwater, water,
+
 	--Wait for ghosts to finish building first.
-	if ghosts > #coverable_tiles then 
+	if ghosts > #coverable_tiles then
 		debug_print("Found some work to do.  Terminating early.")
 		return true
-	end 
+	end
 
 	--attempt to cover tiles
 	for i = #coverable_tiles, 1, -1 do
@@ -421,7 +421,7 @@ function creep(creeper)
 		table.insert(upgrade_target_types, "stone-path")
 	end
 	if (
-		settings.global["upgrade concrete"].value and 
+		settings.global["upgrade concrete"].value and
 		settings.global["creep refined concrete"].value and
 		refined_concrete_count > 0
 	) then
@@ -491,7 +491,7 @@ function creep(creeper)
 		if ghosts > #water_tiles then
 			debug_print("Found some work to do.  Terminating early.")
 			return true
-		end 
+		end
 		if landfill_count > 0 then
 			for k,v in pairs(water_tiles) do
 				debug_print("Place land!")
@@ -540,10 +540,10 @@ end
 function is_valid_roboport(entity)
 	debug_print_function_was_called("is_valid_roboport()")
 	if (
-		entity and 
-		entity.valid and 
-		entity.type == "roboport" and 
-		entity.logistic_cell and 
+		entity and
+		entity.valid and
+		entity.type == "roboport" and
+		entity.logistic_cell and
 		entity.logistic_cell.construction_radius > 0 and
 		entity.logistic_network and
 		entity.logistic_network.valid
@@ -601,12 +601,12 @@ end
 
 script.on_event(
 	{
-		defines.events.on_built_entity, 
-		defines.events.on_robot_built_entity, 
-		defines.events.on_entity_cloned, 
+		defines.events.on_built_entity,
+		defines.events.on_robot_built_entity,
+		defines.events.on_entity_cloned,
 		defines.events.script_raised_built,
 		defines.events.script_raised_revive
-	}, 
+	},
 	on_built_entity_handler
 )
 script.on_nth_tick(RUN_EVERY_N_UPDATES, creepers_update)

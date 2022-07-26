@@ -8,5 +8,18 @@
         "Mylon",
         "roboports",
         "utoxin"
+    ],
+    "workbench.colorCustomizations": {
+        "activityBar.background": "#430B73",
+        "titleBar.activeBackground": "#5E0FA1",
+        "titleBar.activeForeground": "#FEFDFF"
+    },
+    "Lua.diagnostics.globals": [
+        "global",
+        "game",
+        "settings",
+        "defines",
+        "script",
+        "data"
     ]
 }
