@@ -1,19 +1,17 @@
-SURFACES = settings.global["surface concreep is running on"].value
+DEFAULT_MINIMUM_ROBOTS = 30
+DEFAULT_MINIMUM_ITEM_COUNT = 200
 
-MINIMUM_ROBOTS = settings.global["minimum robot"].value
-MINIMUM_ITEM_COUNT = settings.global["minimum item"].value
-
-NO_WORK_UPDATES_BEFORE_REINIT = 60
-SURFACES_PER_REINIT_PASS = 1
-ROBOPORTS_PER_REINIT_PASS = settings.global["ROBOPORTS_PER_REINIT_PASS"].value
+DEFAULT_NO_WORK_UPDATES_BEFORE_REINIT = 60
+DEFAULT_SURFACES_PER_REINIT_PASS = 1
+DEFAULT_ROBOPORTS_PER_REINIT_PASS = 1
 
 -- how many ups between creeper updates
-RUN_EVERY_N_UPDATES = settings.global["RUN_EVERY_N_UPDATES"].value
+DEFAULT_RUN_EVERY_N_UPDATES  = 60
 -- how many creepers to creep per update run
-CREEPERS_PER_UPDATE = settings.global["CREEPERS_PER_UPDATE"].value
-INITIAL_RADIUS = 1
+DEFAULT_CREEPERS_PER_UPDATE = 5
+DEFAULT_INITIAL_RADIUS = 1
 
-DEBUG_PREFIX = "Concreep: "
+DEFAULT_DEBUG_PREFIX = "Concreep: "
 
 function array_concat(t1, t2)
 	local t3 = {}
@@ -36,19 +34,19 @@ end
 
 function debug_print(message)
 	if settings.global["debug"].value then
-		game.print(DEBUG_PREFIX .. message)
+		game.print(DEFAULT_DEBUG_PREFIX .. message)
 	end
 end
 
 function debug_print_function_was_called(function_name)
 	if settings.global["debug function calls"].value then
-		game.print(DEBUG_PREFIX .. " function called: " .. function_name)
+		game.print(DEFAULT_DEBUG_PREFIX .. " function called: " .. function_name)
 	end
 end
 
 function debug_print_coroutine_was_called(function_name)
 	if settings.global["debug coroutine calls"].value then
-		game.print(DEBUG_PREFIX .. " coroutine function called: " .. function_name)
+		game.print(DEFAULT_DEBUG_PREFIX .. " coroutine function called: " .. function_name)
 	end
 end
 
@@ -57,7 +55,7 @@ function init()
 
 	global.creepers = {}
 	global.creeper_index = 1
-	global.robots_given_instructions = 0
+	global.robots_given_instructions = 0 --not used atm - what was the intention here?
 
 	global.no_work_counter = 0
 	global.reinit_surfaces = {}
@@ -66,20 +64,9 @@ function init()
 	global.reinit_current_surface_roboport_index = 1
 	global.reinit_level_running = 0
 
-	   for str in SURFACES:gmatch("([^,]+)") do
-		name = str:gsub("%s+", "")
-		local surf = game.surfaces[name]
-        if surf and surf.valid then do
-            local roboports = surf.find_entities_filtered{type="roboport"}
-            for index, port in pairs(roboports) do
-                if is_valid_roboport(port) then
-                add_creeper_for_roboport(port)
-                end
-            end
-            end
-        end
-    end   
-end	
+	script.on_nth_tick(nil) --unregister all nth tick handlers, so we can update the interval n
+	script.on_nth_tick(run every n updates, creepers_update)
+end
 
 -- a fake coroutine
 function reinit()
@@ -128,7 +115,7 @@ function _reinit_reentrant()
 	if global.reinit_level_running == 0 then
 		-- no loops running, check if we should start outer loop
 		global.no_work_counter = global.no_work_counter + 1
-		if global.no_work_counter >= NO_WORK_UPDATES_BEFORE_REINIT then
+		if global.no_work_counter >= DEFAULT_NO_WORK_UPDATES_BEFORE_REINIT then
 			_reinit_reentrant_level1_start()
 		end
 	elseif global.reinit_level_running == 1 then
@@ -151,11 +138,19 @@ function _reinit_reentrant_level1_start()
 	global.no_work_counter = 0
 
 	-- set up outer arrays to iterate
-	for str in SURFACES:gmatch("([^,]+)") do
-	name = str:gsub("%s+", "")
-    local surf = game.surfaces[name]
+	local listOfSurfaces = {}
+	local name = ""
+	for str in settings.global["allowed surfaces"].value:gmatch("([^,]+)") do
+		name = str:gsub("%s+", "")
+		if name and game.surfaces[name].valid		 
+			table.insert(listOfSurfaces, game.surfaces[name])
+		end
 	end
-	global.reinit_surfaces = array_shallowcopy(surf)
+	if listOfSurfaces == {}
+		listOfSurfaces = game.surfaces["nauvis"] --if we didn't have any valid surfaces then we continue with nauvis
+		game.print("No valid surfaces found, using Nauvis as default. Please check your settings!")
+	end
+	global.reinit_surfaces = array_shallowcopy(listOfSurfaces)
 	global.reinit_surface_index = 1
 	global.reinit_current_surface_roboports = {}
 	global.reinit_current_surface_roboport_index = 1
@@ -170,8 +165,8 @@ function _reinit_reentrant_level1_body()
 	debug_print_coroutine_was_called("_reinit_reentrant_level1_body()")
 
 	-- pseudo: for global.reinit_surface_index, #global.reinit_surfaces do
-		-- -- limit how many surfaces checked per call
-		-- for pass_index = 1, SURFACES_PER_REINIT_PASS do
+		-- -- limit how many settings.global["allowed surfaces"].value checked per call
+		-- for pass_index = 1, DEFAULT_SURFACES_PER_REINIT_PASS do
 			-- bounds check
 			debug_print("global.reinit_surface_index: " .. global.reinit_surface_index .. " #global.reinit_surfaces: " .. #global.reinit_surfaces)
 
@@ -182,15 +177,15 @@ function _reinit_reentrant_level1_body()
 					surface and
 					surface.valid
 				) then
-					_reinit_reentrant_level2_start(surface)
+					_reinit_reentrant_level2_start(surface) 
 				else
 					-- degenerate case, this is what increments the outer index
 					_reinit_reentrant_level2_end()
 				end
 			end
 			-- if we got here:
-			--  - we either exhausted the list of surfaces (so return true) or 
-			--  - we reached SURFACES_PER_REINIT_PASS for this call (so return false)
+			--  - we either exhausted the list of settings.global["allowed surfaces"].value (so return true) or 
+			--  - we reached DEFAULT_SURFACES_PER_REINIT_PASS for this call (so return false)
 			if global.reinit_surface_index > #global.reinit_surfaces then
 				_reinit_reentrant_level1_end()
 			end
@@ -223,7 +218,7 @@ function _reinit_reentrant_level2_body()
 	debug_print_coroutine_was_called("_reinit_reentrant_level2_body()")
 	-- psuedo: for global.reinit_current_surface_roboport_index, #global.reinit_current_surface_roboports do
 		-- limit how many roboports checked per call
-		for pass_index = 1, ROBOPORTS_PER_REINIT_PASS do
+		for pass_index = 1, roboports per reinit pass do
 			-- bounds check
 			if global.reinit_current_surface_roboport_index <= #global.reinit_current_surface_roboports then
 				-- make sure roboport is still valid
@@ -240,7 +235,7 @@ function _reinit_reentrant_level2_body()
 		end
 		-- if we got here:
 		--  - we either exhausted the list of roboports (so return true) or
-		--  - we reached ROBOPORTS_PER_REINIT_PASS (so return false)
+		--  - we reached roboports per reinit pass (so return false)
 		if global.reinit_current_surface_roboport_index > #global.reinit_current_surface_roboports then
 			_reinit_reentrant_level2_end()
 		end
@@ -264,11 +259,11 @@ function creepers_update()
 		reinit()
 		return 
 	end
-	for i = 1, CREEPERS_PER_UPDATE do
+	for i = 1, creepers per update do
 		-- bounds check, early bail
 		if i > #global.creepers then
-            return
-        end
+			return
+		end
 
 		local creeper = get_creeper()
 		if creeper ~= nil then
@@ -282,7 +277,7 @@ function creepers_update()
 		else	
 			debug_print("creeper removed")
 		end
-    end
+	end
 end
 
 function get_creeper()
@@ -321,18 +316,18 @@ function creep(creeper)
 	if force.max_successful_attempts_per_tick_per_construction_queue * 60 < idle_robots then
 		force.max_successful_attempts_per_tick_per_construction_queue = math.floor(idle_robots / 60)
 	end
-	local refined_concrete_count = math.max(0, roboport.logistic_network.get_item_count("refined-concrete") - MINIMUM_ITEM_COUNT)
-	local concrete_count = math.max(0, roboport.logistic_network.get_item_count("concrete") - MINIMUM_ITEM_COUNT)
-	local brick_count = math.max(0, roboport.logistic_network.get_item_count("stone-brick") - MINIMUM_ITEM_COUNT)
-	local landfill_count = math.max(0, roboport.logistic_network.get_item_count("landfill") - MINIMUM_ITEM_COUNT)
-	local available_worker_count = math.max(0, roboport.logistic_network.available_construction_robots - MINIMUM_ROBOTS)
+	local refined_concrete_count = math.max(0, roboport.logistic_network.get_item_count("refined-concrete") - settings.global["minimum item"].value)
+	local concrete_count = math.max(0, roboport.logistic_network.get_item_count("concrete") - settings.global["minimum item"].value)
+	local brick_count = math.max(0, roboport.logistic_network.get_item_count("stone-brick") - settings.global["minimum item"].value)
+	local landfill_count = math.max(0, roboport.logistic_network.get_item_count("landfill") - settings.global["minimum item"].value)
 	debug_print(
 		" brick: " .. brick_count .. 
 		" concrete: " .. concrete_count .. 
 		" refined: " .. refined_concrete_count ..
 		" landfill: " .. landfill_count
 	)
-	if roboport.logistic_network.available_construction_robots <= MINIMUM_ROBOTS then
+	local available_worker_count = math.max(0, roboport.logistic_network.available_construction_robots - settings.global["minimum robot"].value)
+	if roboport.logistic_network.available_construction_robots <= settings.global["minimum robot"].value then
 		debug_print("can NOT place " .. " - minimum robots")
 		return
 	end
@@ -536,7 +531,7 @@ function creep(creeper)
 			debug_print("New radius: " .. creeper.radius)
 		else
 			if #upgrade_target_types > 0 and surface.count_tiles_filtered{name=upgrade_target_types, area=area, limit=1} > 0 then
-				creeper.radius = INITIAL_RADIUS --Reset radius and switch to upgrade mode.
+				creeper.radius = DEFAULT_INITIAL_RADIUS --Reset radius and switch to upgrade mode.
 				creeper.upgrade = true
 			else
 				creeper.off = true
@@ -594,7 +589,7 @@ function add_creeper_for_roboport(roboport)
 
 	local surface = roboport.surface
 
-	table.insert(global.creepers, {roboport = roboport, radius = INITIAL_RADIUS})
+	table.insert(global.creepers, {roboport = roboport, radius = DEFAULT_INITIAL_RADIUS})
 end
 
 function is_valid_roboport_tile_names()
@@ -610,29 +605,19 @@ end
 
 function runtime_settings_changed()
 debug_print_function_was_called("runtime_settings_changed()")
-	MINIMUM_ITEM_COUNT = settings.global["minimum item"].value
-	ROBOPORTS_PER_REINIT_PASS = settings.global["ROBOPORTS_PER_REINIT_PASS"].value
-	CREEPERS_PER_UPDATE = settings.global["CREEPERS_PER_UPDATE"].value
-	MINIMUM_ROBOTS = settings.global["minimum robot"].value
-	SURFACES = settings.global["surface concreep is running on"].value
-	RUN_EVERY_N_UPDATES = settings.global["RUN_EVERY_N_UPDATES"].value
-	script.on_nth_tick(nil)
-	script.on_nth_tick(RUN_EVERY_N_UPDATES, creepers_update)
 	init()
-  end
+end
 
-  
 script.on_event(
 	{
-		defines.events.on_built_entity, 
-		defines.events.on_robot_built_entity, 
-		defines.events.on_entity_cloned, 
+		defines.events.on_built_entity,
+		defines.events.on_robot_built_entity,
+		defines.events.on_entity_cloned,
 		defines.events.script_raised_built,
-		defines.events.script_raised_revive		
-	}, 
+		defines.events.script_raised_revive
+	},
 	on_built_entity_handler
 )
-script.on_nth_tick(RUN_EVERY_N_UPDATES, creepers_update)
 script.on_init(init)
 script.on_configuration_changed(is_valid_roboport_tile_names)
 script.on_event(defines.events.on_runtime_mod_setting_changed, runtime_settings_changed)
