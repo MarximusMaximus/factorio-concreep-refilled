@@ -55,6 +55,92 @@ function init()
 	script.on_nth_tick(settings.global["run every n updates"].value, creepers_update)
 end
 
+function hypercreep_builder(target_x_pos,target_y_pos,offset,roboport)
+	debug_print_coroutine_was_called("hypercreep_builder()")	
+	local surface = roboport.surface
+	local force = roboport.force
+	local roboport_x_pos = roboport.position.x
+	local roboport_y_pos = roboport.position.y
+	local half_distance_x = math.floor((target_x_pos-roboport.position.x)/2)
+	local half_distance_y = math.floor((target_y_pos-roboport.position.y)/2)
+	if 
+	(
+	surface.can_place_entity{name="entity-ghost", position={target_x_pos,target_y_pos}, inner_name=roboport.name, force=force} and
+	surface.can_place_entity{name="entity-ghost", position={target_x_pos,target_y_pos+offset}, inner_name="big-electric-pole", force=force, build_check_type=defines.build_check_type.script_ghost} and
+	surface.count_entities_filtered{area={{target_x_pos-10,target_y_pos-10},{target_x_pos+10,target_y_pos+10}},name="entity-ghost"} == 0 --and
+	--surface.can_place_entity{name="entity-ghost", position={target_x_pos,target_y_pos-half_distance+offset}, inner_name="big-electric-pole", force=force} and
+	--surface.can_place_entity{name="entity-ghost", position={target_x_pos-half_distance,target_y_pos+offset}, inner_name="big-electric-pole", force=force}
+	)
+	then
+		surface.create_entity{name="entity-ghost", position={target_x_pos,target_y_pos}, inner_name=roboport.name, force=force, expires=false}
+		surface.create_entity{name="entity-ghost", position={target_x_pos,target_y_pos+offset}, inner_name="big-electric-pole", force=force, expires=false}
+		if (target_y_pos > roboport_y_pos and 
+		surface.can_place_entity{name="entity-ghost", position={target_x_pos,target_y_pos-half_distance_y+offset}, inner_name="big-electric-pole", force=force, build_check_type=defines.build_check_type.script_ghost} and 
+		surface.count_entities_filtered{area={{target_x_pos-10,target_y_pos-half_distance_y+offset-10},{target_x_pos+10,target_y_pos-half_distance_y+offset+10}},name="entity-ghost"} == 0) then
+			surface.create_entity{name="entity-ghost", position={target_x_pos,target_y_pos-half_distance_y+offset}, inner_name="big-electric-pole", force=force, expires=false}
+		end
+		if (target_y_pos < roboport_y_pos and 
+		surface.can_place_entity{name="entity-ghost", position={target_x_pos,target_y_pos-half_distance_y+offset}, inner_name="big-electric-pole", force=force, build_check_type=defines.build_check_type.script_ghost}and 
+		surface.count_entities_filtered{area={{target_x_pos-10,target_y_pos-half_distance_y+offset-10},{target_x_pos+10,target_y_pos-half_distance_y+offset+10}},name="entity-ghost"} == 0) then
+			surface.create_entity{name="entity-ghost", position={target_x_pos,target_y_pos-half_distance_y+offset}, inner_name="big-electric-pole", force=force, expires=false}
+		end
+		if (target_x_pos > roboport_x_pos and 
+		surface.can_place_entity{name="entity-ghost", position={target_x_pos-half_distance_x,target_y_pos+offset}, inner_name="big-electric-pole", force=force, build_check_type=defines.build_check_type.script_ghost}and 
+		surface.count_entities_filtered{area={{target_x_pos-half_distance_x-10,target_y_pos+offset-10},{target_x_pos-half_distance_x+10,target_y_pos+offset+10}},name="entity-ghost"} == 0) then
+			surface.create_entity{name="entity-ghost", position={target_x_pos-half_distance_x,target_y_pos+offset}, inner_name="big-electric-pole", force=force, expires=false}
+		end
+		if (target_x_pos < roboport_x_pos and 
+		surface.can_place_entity{name="entity-ghost", position={target_x_pos-half_distance_x,target_y_pos+offset}, inner_name="big-electric-pole", force=force, build_check_type=defines.build_check_type.script_ghost}and 
+		surface.count_entities_filtered{area={{target_x_pos-half_distance_x-10,target_y_pos+offset-10},{target_x_pos-half_distance_x+10,target_y_pos+offset+10}},name="entity-ghost"} == 0) then
+			surface.create_entity{name="entity-ghost", position={target_x_pos-half_distance_x,target_y_pos+offset}, inner_name="big-electric-pole", force=force, expires=false}
+		end	
+	end
+end
+
+function hypercreep(roboport)
+	debug_print_function_was_called("hypercreep")
+	local roboport_item_count = roboport.logistic_network.get_item_count("roboport")
+	local power_pole_item_count = roboport.logistic_network.get_item_count("big-electric-pole")
+	if (roboport_item_count < 4 or power_pole_item_count < 4)
+		debug_print("Not enough roboports/power poles to hyprecreep")
+		return 
+	end if
+	local offset_power_poles = 3
+	local logistic_diameter = roboport.logistic_cell.logistic_radius * 2
+	for i=1, 8 do
+		local target_x_pos = roboport.position.x
+		local target_y_pos = roboport.position.y
+		if i==1 then
+			target_x_pos = target_x_pos + logistic_diameter
+			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
+		elseif i==2 then
+			target_x_pos = target_x_pos - logistic_diameter
+			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
+		elseif i==3 then
+			target_y_pos = target_y_pos + logistic_diameter
+			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
+		elseif i==4 then
+			target_y_pos = target_y_pos - logistic_diameter
+			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
+ 		elseif i==5 then
+			target_x_pos = target_x_pos + logistic_diameter
+			target_y_pos = target_y_pos + logistic_diameter
+			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
+		elseif i==6 then
+			target_x_pos = target_x_pos - logistic_diameter
+			target_y_pos = target_y_pos - logistic_diameter
+			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
+		elseif i==7 then
+			target_x_pos = target_x_pos + logistic_diameter
+			target_y_pos = target_y_pos - logistic_diameter
+			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
+		elseif i==8 then
+			target_x_pos = target_x_pos - logistic_diameter
+			target_y_pos = target_y_pos + logistic_diameter
+			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)		 
+		end
+	end	
+end	
 -- a fake coroutine
 function reinit()
 	debug_print_coroutine_was_called("reinit()")
@@ -289,47 +375,6 @@ function save_entity_creation(surface, name, position, inner_name, force, expire
 	end
 end
 
-function hypercreep_builder(target_x_pos,target_y_pos,offset,roboport)
-	debug_print_function_was_called("hypercreep_builder()")	
-	local surface = roboport.surface
-	local force = roboport.force
-	local roboport_x_pos = roboport.position.x
-	local roboport_y_pos = roboport.position.y
-	local half_distance_x = math.floor((target_x_pos-roboport.position.x)/2)
-	local half_distance_y = math.floor((target_y_pos-roboport.position.y)/2)
-	if 
-	(
-	surface.can_place_entity{name="entity-ghost", position={target_x_pos,target_y_pos}, inner_name=roboport.name, force=force} and
-	surface.can_place_entity{name="entity-ghost", position={target_x_pos,target_y_pos+offset}, inner_name="big-electric-pole", force=force, build_check_type=defines.build_check_type.script_ghost} and
-	surface.count_entities_filtered{area={{target_x_pos-10,target_y_pos-10},{target_x_pos+10,target_y_pos+10}},name="entity-ghost"} == 0 --and
-	--surface.can_place_entity{name="entity-ghost", position={target_x_pos,target_y_pos-half_distance+offset}, inner_name="big-electric-pole", force=force} and
-	--surface.can_place_entity{name="entity-ghost", position={target_x_pos-half_distance,target_y_pos+offset}, inner_name="big-electric-pole", force=force}
-	)
-	then
-		surface.create_entity{name="entity-ghost", position={target_x_pos,target_y_pos}, inner_name=roboport.name, force=force, expires=false}
-		surface.create_entity{name="entity-ghost", position={target_x_pos,target_y_pos+offset}, inner_name="big-electric-pole", force=force, expires=false}
-		if (target_y_pos > roboport_y_pos and 
-		surface.can_place_entity{name="entity-ghost", position={target_x_pos,target_y_pos-half_distance_y+offset}, inner_name="big-electric-pole", force=force, build_check_type=defines.build_check_type.script_ghost} and 
-		surface.count_entities_filtered{area={{target_x_pos-10,target_y_pos-half_distance_y+offset-10},{target_x_pos+10,target_y_pos-half_distance_y+offset+10}},name="entity-ghost"} == 0) then
-			surface.create_entity{name="entity-ghost", position={target_x_pos,target_y_pos-half_distance_y+offset}, inner_name="big-electric-pole", force=force, expires=false}
-		end
-		if (target_y_pos < roboport_y_pos and 
-		surface.can_place_entity{name="entity-ghost", position={target_x_pos,target_y_pos-half_distance_y+offset}, inner_name="big-electric-pole", force=force, build_check_type=defines.build_check_type.script_ghost}and 
-		surface.count_entities_filtered{area={{target_x_pos-10,target_y_pos-half_distance_y+offset-10},{target_x_pos+10,target_y_pos-half_distance_y+offset+10}},name="entity-ghost"} == 0) then
-			surface.create_entity{name="entity-ghost", position={target_x_pos,target_y_pos-half_distance_y+offset}, inner_name="big-electric-pole", force=force, expires=false}
-		end
-		if (target_x_pos > roboport_x_pos and 
-		surface.can_place_entity{name="entity-ghost", position={target_x_pos-half_distance_x,target_y_pos+offset}, inner_name="big-electric-pole", force=force, build_check_type=defines.build_check_type.script_ghost}and 
-		surface.count_entities_filtered{area={{target_x_pos-half_distance_x-10,target_y_pos+offset-10},{target_x_pos-half_distance_x+10,target_y_pos+offset+10}},name="entity-ghost"} == 0) then
-			surface.create_entity{name="entity-ghost", position={target_x_pos-half_distance_x,target_y_pos+offset}, inner_name="big-electric-pole", force=force, expires=false}
-		end
-		if (target_x_pos < roboport_x_pos and 
-		surface.can_place_entity{name="entity-ghost", position={target_x_pos-half_distance_x,target_y_pos+offset}, inner_name="big-electric-pole", force=force, build_check_type=defines.build_check_type.script_ghost}and 
-		surface.count_entities_filtered{area={{target_x_pos-half_distance_x-10,target_y_pos+offset-10},{target_x_pos-half_distance_x+10,target_y_pos+offset+10}},name="entity-ghost"} == 0) then
-			surface.create_entity{name="entity-ghost", position={target_x_pos-half_distance_x,target_y_pos+offset}, inner_name="big-electric-pole", force=force, expires=false}
-		end	
-	end
-end
 function creep(creeper)
 	debug_print_function_was_called("creep()")
 
@@ -347,40 +392,6 @@ function creep(creeper)
 	debug_print("Y: " .. roboport.position.y)
 	debug_print("Rad: " .. radius)
 	debug_print("Surface: " .. roboport.surface.name) 
-	local offset_power_poles = 3
-	local logistic_diameter = roboport.logistic_cell.logistic_radius * 2
-	for i=1, 8 do
-		local target_x_pos = roboport.position.x
-		local target_y_pos = roboport.position.y
-		if i==1 then
-			target_x_pos = target_x_pos + logistic_diameter
-			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
-		elseif i==2 then
-			target_x_pos = target_x_pos - logistic_diameter
-			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
-		elseif i==3 then
-			target_y_pos = target_y_pos + logistic_diameter
-			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
-		elseif i==4 then
-			target_y_pos = target_y_pos - logistic_diameter
-			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
- 		elseif i==5 then
-			target_x_pos = target_x_pos + logistic_diameter
-			target_y_pos = target_y_pos + logistic_diameter
-			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
-		elseif i==6 then
-			target_x_pos = target_x_pos - logistic_diameter
-			target_y_pos = target_y_pos - logistic_diameter
-			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
-		elseif i==7 then
-			target_x_pos = target_x_pos + logistic_diameter
-			target_y_pos = target_y_pos - logistic_diameter
-			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
-		elseif i==8 then
-			target_x_pos = target_x_pos - logistic_diameter
-			target_y_pos = target_y_pos + logistic_diameter
-			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)		 
-		end
 
 	--[[ 	if surface.can_place_entity{name="roboport", position={target_x_pos,target_y_pos}, inner_name=roboport.name, force=force} and 
 		surface.can_place_entity{name="big-electric-pole", position={target_x_pos,target_y_pos+offset_power_poles}, inner_name="big-electric-pole", force=force} and 
@@ -391,7 +402,7 @@ function creep(creeper)
 			surface.create_entity{name="big-electric-pole", position={target_x_pos,target_y_pos+offset_power_poles}, inner_name="big-electric-pole", force=force, expires=false}
 			surface.create_entity{name="big-electric-pole", position={target_x_pos,math.ceil(target_y_pos+offset_power_poles-creeper.roboport.position.y)/2+14}, inner_name="big-electric-pole", force=force, expires=false}
 		end ]]
-	end	
+	
 
 	local ghosts = surface.count_entities_filtered{area=area, name="tile-ghost", force=force}
 	if force.max_successful_attempts_per_tick_per_construction_queue * 60 < idle_robots then
@@ -616,6 +627,9 @@ function creep(creeper)
 				creeper.radius = settings.global["initial radius"].value --Reset radius and switch to upgrade mode.
 				creeper.upgrade = true
 			else
+				if settings.global["hypercreep"].value then
+					hypercreep(roboport)
+				end
 				creeper.off = true
 				debug_print("Removing creeper")
 			end
