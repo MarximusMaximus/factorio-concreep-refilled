@@ -1,17 +1,4 @@
-DEFAULT_MINIMUM_ROBOTS = 30
-DEFAULT_MINIMUM_ITEM_COUNT = 200
-
-DEFAULT_NO_WORK_UPDATES_BEFORE_REINIT = 60
-DEFAULT_SURFACES_PER_REINIT_PASS = 1
-DEFAULT_ROBOPORTS_PER_REINIT_PASS = 1
-
--- how many ups between creeper updates
-DEFAULT_RUN_EVERY_N_UPDATES  = 60
--- how many creepers to creep per update run
-DEFAULT_CREEPERS_PER_UPDATE = 5
-DEFAULT_INITIAL_RADIUS = 1
-
-DEFAULT_DEBUG_PREFIX = "Concreep: "
+DEBUG_PREFIX = "Concreep: "
 
 function array_concat(t1, t2)
 	local t3 = {}
@@ -34,19 +21,19 @@ end
 
 function debug_print(message)
 	if settings.global["debug"].value then
-		game.print(DEFAULT_DEBUG_PREFIX .. message)
+		game.print(DEBUG_PREFIX .. message)
 	end
 end
 
 function debug_print_function_was_called(function_name)
 	if settings.global["debug function calls"].value then
-		game.print(DEFAULT_DEBUG_PREFIX .. " function called: " .. function_name)
+		game.print(DEBUG_PREFIX .. " function called: " .. function_name)
 	end
 end
 
 function debug_print_coroutine_was_called(function_name)
 	if settings.global["debug coroutine calls"].value then
-		game.print(DEFAULT_DEBUG_PREFIX .. " coroutine function called: " .. function_name)
+		game.print(DEBUG_PREFIX .. " coroutine function called: " .. function_name)
 	end
 end
 
@@ -65,7 +52,7 @@ function init()
 	global.reinit_level_running = 0
 
 	script.on_nth_tick(nil) --unregister all nth tick handlers, so we can update the interval n
-	script.on_nth_tick(run every n updates, creepers_update)
+	script.on_nth_tick(settings.global["run every n updates"].value, creepers_update)
 end
 
 -- a fake coroutine
@@ -115,7 +102,7 @@ function _reinit_reentrant()
 	if global.reinit_level_running == 0 then
 		-- no loops running, check if we should start outer loop
 		global.no_work_counter = global.no_work_counter + 1
-		if global.no_work_counter >= DEFAULT_NO_WORK_UPDATES_BEFORE_REINIT then
+		if global.no_work_counter >= settings.global["no work updates before reinit"].value then
 			_reinit_reentrant_level1_start()
 		end
 	elseif global.reinit_level_running == 1 then
@@ -165,8 +152,8 @@ function _reinit_reentrant_level1_body()
 	debug_print_coroutine_was_called("_reinit_reentrant_level1_body()")
 
 	-- pseudo: for global.reinit_surface_index, #global.reinit_surfaces do
-		-- -- limit how many settings.global["allowed surfaces"].value checked per call
-		-- for pass_index = 1, DEFAULT_SURFACES_PER_REINIT_PASS do
+		-- -- limit how many settings.global["surfaces per reinit pass"].value checked per call
+		-- for pass_index = 1, settings.global["surfaces per reinit pass"].value do
 			-- bounds check
 			debug_print("global.reinit_surface_index: " .. global.reinit_surface_index .. " #global.reinit_surfaces: " .. #global.reinit_surfaces)
 
@@ -185,7 +172,7 @@ function _reinit_reentrant_level1_body()
 			end
 			-- if we got here:
 			--  - we either exhausted the list of settings.global["allowed surfaces"].value (so return true) or 
-			--  - we reached DEFAULT_SURFACES_PER_REINIT_PASS for this call (so return false)
+			--  - we reached settings.global["surfaces per reinit pass"] for this call (so return false)
 			if global.reinit_surface_index > #global.reinit_surfaces then
 				_reinit_reentrant_level1_end()
 			end
@@ -218,7 +205,7 @@ function _reinit_reentrant_level2_body()
 	debug_print_coroutine_was_called("_reinit_reentrant_level2_body()")
 	-- psuedo: for global.reinit_current_surface_roboport_index, #global.reinit_current_surface_roboports do
 		-- limit how many roboports checked per call
-		for pass_index = 1, roboports per reinit pass do
+		for pass_index = 1, settings.global["roboports per reinit pass"] do
 			-- bounds check
 			if global.reinit_current_surface_roboport_index <= #global.reinit_current_surface_roboports then
 				-- make sure roboport is still valid
@@ -235,7 +222,7 @@ function _reinit_reentrant_level2_body()
 		end
 		-- if we got here:
 		--  - we either exhausted the list of roboports (so return true) or
-		--  - we reached roboports per reinit pass (so return false)
+		--  - we reached settings.global["roboports per reinit pass"] (so return false)
 		if global.reinit_current_surface_roboport_index > #global.reinit_current_surface_roboports then
 			_reinit_reentrant_level2_end()
 		end
@@ -259,7 +246,7 @@ function creepers_update()
 		reinit()
 		return 
 	end
-	for i = 1, creepers per update do
+	for i = 1, settings.global["creepers per update"].value do
 		-- bounds check, early bail
 		if i > #global.creepers then
 			return
@@ -531,7 +518,7 @@ function creep(creeper)
 			debug_print("New radius: " .. creeper.radius)
 		else
 			if #upgrade_target_types > 0 and surface.count_tiles_filtered{name=upgrade_target_types, area=area, limit=1} > 0 then
-				creeper.radius = DEFAULT_INITIAL_RADIUS --Reset radius and switch to upgrade mode.
+				creeper.radius = settings.global["initial radius"].value --Reset radius and switch to upgrade mode.
 				creeper.upgrade = true
 			else
 				creeper.off = true
@@ -589,7 +576,7 @@ function add_creeper_for_roboport(roboport)
 
 	local surface = roboport.surface
 
-	table.insert(global.creepers, {roboport = roboport, radius = DEFAULT_INITIAL_RADIUS})
+	table.insert(global.creepers, {roboport = roboport, radius = settings.global["DEFAULT_INITIAL_RADIUS"].value})
 end
 
 function is_valid_roboport_tile_names()

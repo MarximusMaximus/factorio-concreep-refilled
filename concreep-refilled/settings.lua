@@ -1,4 +1,38 @@
+DEFAULT_NO_WORK_UPDATES_BEFORE_REINIT = 60
+DEFAULT_SURFACES_PER_REINIT_PASS = 1
+DEFAULT_INITIAL_RADIUS = 1
+
 data:extend({
+	{
+	type = "int-setting",
+	name = "no work updates before reinit",
+	setting_type = "runtime-global",
+	default_value = DEFAULT_NO_WORK_UPDATES_BEFORE_REINIT,
+	minimum_value = 1,
+	maximum_value = 216000,
+	order = "001",
+	hidden = true
+	},
+	{
+		type = "int-setting",
+		name = "surfaces per reinit pass", -- as far as I can tell thats not used anywhere except in a piece of commented code.
+		setting_type = "runtime-global",
+		default_value = DEFAULT_SURFACES_PER_REINIT_PASS,
+		minimum_value = 1,
+		maximum_value = 10,
+		order = "002",
+		hidden = true
+	},
+	{
+		type = "int-setting",
+		name = "initial radius",
+		setting_type = "runtime-global",
+		default_value = DEFAULT_INITIAL_RADIUS1,
+		minimum_value = 1,
+		maximum_value = 64,
+		order = "003",
+		hidden = true
+	},
 	{
 		type = "string-setting",
 		name = "allowed surfaces",
