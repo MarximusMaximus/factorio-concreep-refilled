@@ -1,6 +1,7 @@
 DEFAULT_NO_WORK_UPDATES_BEFORE_REINIT = 60
 DEFAULT_SURFACES_PER_REINIT_PASS = 1
 DEFAULT_INITIAL_RADIUS = 1
+DEFAULT_SURFACES = "nauvis"
 
 data:extend({
 	{
@@ -27,7 +28,7 @@ data:extend({
 		type = "int-setting",
 		name = "initial radius",
 		setting_type = "runtime-global",
-		default_value = DEFAULT_INITIAL_RADIUS1,
+		default_value = DEFAULT_INITIAL_RADIUS,
 		minimum_value = 1,
 		maximum_value = 64,
 		order = "003",
@@ -37,7 +38,7 @@ data:extend({
 		type = "string-setting",
 		name = "allowed surfaces",
 		setting_type = "runtime-global",
-		default_value = "nauvis",
+		default_value = DEFAULT_SURFACES,
 		auto_trim = true,
 		allow_blank = false,
 		order = "010"
