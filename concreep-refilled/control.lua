@@ -67,9 +67,7 @@ function hypercreep_builder(target_x_pos,target_y_pos,offset,roboport)
 	(
 	surface.can_place_entity{name="entity-ghost", position={target_x_pos,target_y_pos}, inner_name=roboport.name, force=force} and
 	surface.can_place_entity{name="entity-ghost", position={target_x_pos,target_y_pos+offset}, inner_name="big-electric-pole", force=force, build_check_type=defines.build_check_type.script_ghost} and
-	surface.count_entities_filtered{area={{target_x_pos-10,target_y_pos-10},{target_x_pos+10,target_y_pos+10}},name="entity-ghost"} == 0 --and
-	--surface.can_place_entity{name="entity-ghost", position={target_x_pos,target_y_pos-half_distance+offset}, inner_name="big-electric-pole", force=force} and
-	--surface.can_place_entity{name="entity-ghost", position={target_x_pos-half_distance,target_y_pos+offset}, inner_name="big-electric-pole", force=force}
+	surface.count_entities_filtered{area={{target_x_pos-10,target_y_pos-10},{target_x_pos+10,target_y_pos+10}},name="entity-ghost"} == 0 -- check whether we can place the roboport+power pole before trying
 	)
 	then
 		surface.create_entity{name="entity-ghost", position={target_x_pos,target_y_pos}, inner_name=roboport.name, force=force, expires=false}
@@ -92,7 +90,7 @@ function hypercreep_builder(target_x_pos,target_y_pos,offset,roboport)
 		if (target_x_pos < roboport_x_pos and 
 		surface.can_place_entity{name="entity-ghost", position={target_x_pos-half_distance_x,target_y_pos+offset}, inner_name="big-electric-pole", force=force, build_check_type=defines.build_check_type.script_ghost}and 
 		surface.count_entities_filtered{area={{target_x_pos-half_distance_x-10,target_y_pos+offset-10},{target_x_pos-half_distance_x+10,target_y_pos+offset+10}},name="entity-ghost"} == 0) then
-			surface.create_entity{name="entity-ghost", position={target_x_pos-half_distance_x,target_y_pos+offset}, inner_name="big-electric-pole", force=force, expires=false}
+			surface.create_entity{name="entity-ghost", position={target_x_pos-half_distance_x,target_y_pos+offset}, inner_name="big-electric-pole", force=force, expires=false} -- this whole thing is a mess - fixing it later, many nuneccesary checks here
 		end	
 	end
 end
@@ -112,33 +110,26 @@ function hypercreep(roboport)
 		local target_y_pos = roboport.position.y
 		if i==1 then
 			target_x_pos = target_x_pos + logistic_diameter
-			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
 		elseif i==2 then
 			target_x_pos = target_x_pos - logistic_diameter
-			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
 		elseif i==3 then
 			target_y_pos = target_y_pos + logistic_diameter
-			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
 		elseif i==4 then
 			target_y_pos = target_y_pos - logistic_diameter
-			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
  		elseif i==5 then
 			target_x_pos = target_x_pos + logistic_diameter
 			target_y_pos = target_y_pos + logistic_diameter
-			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
 		elseif i==6 then
 			target_x_pos = target_x_pos - logistic_diameter
 			target_y_pos = target_y_pos - logistic_diameter
-			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
 		elseif i==7 then
 			target_x_pos = target_x_pos + logistic_diameter
 			target_y_pos = target_y_pos - logistic_diameter
-			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
 		elseif i==8 then
 			target_x_pos = target_x_pos - logistic_diameter
-			target_y_pos = target_y_pos + logistic_diameter
-			hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)		 
+			target_y_pos = target_y_pos + logistic_diameter		 
 		end
+		hypercreep_builder(target_x_pos,target_y_pos,offset_power_poles,roboport)
 	end	
 end	
 -- a fake coroutine
