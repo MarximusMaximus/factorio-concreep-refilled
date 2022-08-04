@@ -4,14 +4,14 @@ DEFAULT_INITIAL_RADIUS = 1
 
 data:extend({
 	{
-	type = "int-setting",
-	name = "no work updates before reinit",
-	setting_type = "runtime-global",
-	default_value = DEFAULT_NO_WORK_UPDATES_BEFORE_REINIT,
-	minimum_value = 1,
-	maximum_value = 216000,
-	order = "001",
-	hidden = false
+		type = "int-setting",
+		name = "no work updates before reinit",
+		setting_type = "runtime-global",
+		default_value = DEFAULT_NO_WORK_UPDATES_BEFORE_REINIT,
+		minimum_value = 1,
+		maximum_value = 216000,
+		order = "001",
+		hidden = true
 	},
 	{
 		type = "int-setting",
@@ -122,8 +122,8 @@ data:extend({
 		type = "int-setting",
 		name = "run every n updates",
 		setting_type = "runtime-global",
-		default_value = 20,
-		minimum_value = 1,
+		default_value = 60,
+		minimum_value = 0,
 		maximum_value = 1000,
 		order = "043"
 	},
