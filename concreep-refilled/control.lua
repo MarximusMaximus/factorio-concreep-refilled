@@ -97,37 +97,38 @@ function hypercreep_builder(target_robo_pos_x,target_robo_pos_y,offset,roboport,
 	end
 	-- cant build in uncharted areas
 	local chart_radius = settings.global["concreep range"].value * roboport.logistic_cell.construction_radius / 100
-	force.chart(surface, {{target_robo_pos_x			- chart_radius, target_robo_pos_y - chart_radius}					, {target_robo_pos_x 			+ chart_radius, target_robo_pos_y 					+ chart_radius}})
-	force.chart(surface, {{target_robo_pos_x 			- chart_radius, target_pole_pos_y_minus_half_dist - chart_radius}	, {target_robo_pos_x 			+ chart_radius, target_pole_pos_y_minus_half_dist	+ chart_radius}})
-	force.chart(surface, {{target_pole_pos_x_minus_half - chart_radius, target_robo_pos_y - chart_radius}					, {target_pole_pos_x_minus_half + chart_radius, target_robo_pos_y 					+ chart_radius}})
+	force.chart(surface, {{target_robo_pos_x            - chart_radius, target_robo_pos_y - chart_radius}                 , {target_robo_pos_x            + chart_radius, target_robo_pos_y                 + chart_radius}})
+	force.chart(surface, {{target_robo_pos_x            - chart_radius, target_pole_pos_y_minus_half_dist - chart_radius} , {target_robo_pos_x            + chart_radius, target_pole_pos_y_minus_half_dist	+ chart_radius}})
+	force.chart(surface, {{target_pole_pos_x_minus_half - chart_radius, target_robo_pos_y - chart_radius}                 , {target_pole_pos_x_minus_half + chart_radius, target_robo_pos_y                 + chart_radius}})
 
 	if (
 		surface.can_place_entity{name="entity-ghost", position={target_robo_pos_x,target_robo_pos_y}, inner_name=roboport.name, force=force} and
-		surface.can_place_entity{name="entity-ghost", position={target_robo_pos_x,target_pole_pos_y}, inner_name=pole_type, force=force} and
-		has_value(global.placed_roboports_positions,{target_robo_pos_x,target_robo_pos_y}) == false and
-		has_value(global.placed_poles_positions,{target_robo_pos_x,target_pole_pos_y}) == false -- doing this as the game does place multiple power poles on top of each other (and roboports), if we do it all in one frame - not entirely sure how to circumvent that any other way than this
+		surface.can_place_entity{name="entity-ghost", position={target_robo_pos_x,target_pole_pos_y}, inner_name=pole_type    , force=force} and
+		has_value(global.placed_roboports_positions,           {target_robo_pos_x,target_robo_pos_y}) == false and
+		has_value(global.placed_poles_positions,               {target_robo_pos_x,target_pole_pos_y}) == false -- doing this as the game does place multiple power poles on top of each other (and roboports), if we do it all in one frame - not entirely sure how to circumvent that any other way than this
 	) then
-		surface.create_entity{name="entity-ghost", position={target_robo_pos_x, target_robo_pos_y}, inner_name=roboport.name	, force=force, expires=false}
-		table.insert(global.placed_roboports_positions,{target_robo_pos_x, target_robo_pos_y})
-		surface.create_entity{name="entity-ghost", position={target_robo_pos_x, target_pole_pos_y}, inner_name=pole_type		, force=force, expires=false}
-		table.insert(global.placed_poles_positions,{target_robo_pos_x, target_pole_pos_y})
+		surface.create_entity{name="entity-ghost", position={target_robo_pos_x, target_robo_pos_y}, inner_name=roboport.name, force=force, expires=false}
+		table.insert(global.placed_roboports_positions,     {target_robo_pos_x, target_robo_pos_y})
+		surface.create_entity{name="entity-ghost", position={target_robo_pos_x, target_pole_pos_y}, inner_name=pole_type    , force=force, expires=false}
+		table.insert(global.placed_poles_positions,         {target_robo_pos_x, target_pole_pos_y})
 	end
+	
 	if (target_robo_pos_y ~= roboport_y_pos) then -- we are expanding vertically
 		if (
 			surface.can_place_entity{name="entity-ghost", position={target_robo_pos_x,target_pole_pos_y_minus_half_dist}, inner_name=pole_type, force=force} and not
-			has_value(global.placed_poles_positions,{target_robo_pos_x,target_pole_pos_y_minus_half_dist})
+			has_value(global.placed_poles_positions,               {target_robo_pos_x,target_pole_pos_y_minus_half_dist})
 		) then
-			surface.create_entity{name="entity-ghost", position={target_robo_pos_x,target_pole_pos_y_minus_half_dist}, inner_name=pole_type, force=force, expires=false}
-			table.insert(global.placed_poles_positions,{target_robo_pos_x,target_pole_pos_y_minus_half_dist}) -- we are expanding vertically, placing an additional power pole in between original roboport and new roboport
+			surface.create_entity{name="entity-ghost", position={target_robo_pos_x,target_pole_pos_y_minus_half_dist}   , inner_name=pole_type, force=force, expires=false}
+			table.insert(global.placed_poles_positions,         {target_robo_pos_x,target_pole_pos_y_minus_half_dist}) -- we are expanding vertically, placing an additional power pole in between original roboport and new roboport
 		end
 	end
 	if (target_robo_pos_x ~= roboport_x_pos) then -- no we repeat everything if we had expanded horizontaly
 		if (
-			surface.can_place_entity{name="entity-ghost", position={target_pole_pos_x_minus_half,target_pole_pos_y}, inner_name=pole_type, force=force} and not
-			has_value(global.placed_poles_positions,{target_pole_pos_x_minus_half,target_pole_pos_y})
+			surface.can_place_entity{name="entity-ghost", position={target_pole_pos_x_minus_half,target_pole_pos_y}     , inner_name=pole_type, force=force} and not
+			has_value(global.placed_poles_positions,               {target_pole_pos_x_minus_half,target_pole_pos_y})
 		) then
-			surface.create_entity{name="entity-ghost", position={target_pole_pos_x_minus_half,target_pole_pos_y}, inner_name=pole_type, force=force, expires=false}
-			table.insert(global.placed_poles_positions,{target_pole_pos_x_minus_half,target_pole_pos_y}) -- we are expanding horizontaly, placing an additional power pole in between original roboport and new roboport
+			surface.create_entity{name="entity-ghost", position={target_pole_pos_x_minus_half,target_pole_pos_y}        , inner_name=pole_type, force=force, expires=false}
+			table.insert(global.placed_poles_positions,         {target_pole_pos_x_minus_half,target_pole_pos_y}) -- we are expanding horizontaly, placing an additional power pole in between original roboport and new roboport
 		end
 	end
 end
