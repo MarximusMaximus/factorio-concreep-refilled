@@ -1,6 +1,8 @@
 DEBUG_PREFIX = "Concreep: "
-pole_type="big-electric-pole" -- having this here for a future idea - let user chose what pole to use -> base the interval of the poles on the wire distance max of that pole type
-
+manual_ghost=defines.build_check_type.manual_ghost
+script_ghost=defines.build_check_type.script_ghost
+pole_clearance = 2
+port_clearance = 4
 function array_concat(t1, t2)
 	local t3 = {}
 	for i=1, #t1 do
@@ -51,20 +53,36 @@ function init()
 	global.reinit_level_running = 0
 end
 
-function hypercreep_builder(target_robo_pos_x,target_robo_pos_y,offset,roboport,pole_type)
+function hypercreep_builder(target_robo_pos_x,target_robo_pos_y,offset,roboport,selected_pole)
 	debug_print_coroutine_was_called("hypercreep_builder()")
+	local pole_name = selected_pole.name
+	local pole_wire_length = math.floor(selected_pole.max_wire_distance)
 	local surface = roboport.surface
+
+	local to_list = table.insert
+	local can_create = surface.can_place_entity
+	local create = surface.create_entity
+	local find_ent = surface.find_entities_filtered -- faster to cache these functions as to always call them	
+
+	local chart_radius = settings.global["concreep range"].value * roboport.logistic_cell.construction_radius / 100
 	local force = roboport.force
 	local roboport_x_pos = roboport.position.x
 	local roboport_y_pos = roboport.position.y
-	local half_distance_x = math.floor((target_robo_pos_x-roboport_x_pos)/2)
-	local half_distance_y = math.floor((target_robo_pos_y-roboport_y_pos)/2)
+	local distance_x = target_robo_pos_x-roboport_x_pos
+	local distance_y = target_robo_pos_y-roboport_y_pos
+	local distance
+	if distance_x ~= 0 then
+		 distance = distance_x
+	else
+		 distance = distance_y
+	end
 	local target_pole_pos_y = target_robo_pos_y+offset
-	local target_pole_pos_y_minus_half = target_robo_pos_y-half_distance_y+offset
-	local target_pole_pos_x_minus_half = target_robo_pos_x-half_distance_x
-	local to_list = table.insert
-	local can_create = surface.can_place_entity 
-	local create = surface.create_entity -- faster to cache these functions as to always call them
+	local pole_equal_distance_divider = math.ceil(math.abs(distance/pole_wire_length))
+	
+	local pole_distance = math.floor(distance/pole_equal_distance_divider)
+	local list_of_x_coordinates = {}
+	local list_of_y_coordinates = {}
+
 	local function has_value (t, v)
 		for i=1,#t do
 			if t[i] == v then
@@ -73,69 +91,171 @@ function hypercreep_builder(target_robo_pos_x,target_robo_pos_y,offset,roboport,
 		end
 		return false
 	end
-	local function clear_obstructions(x,y,radius)
-		local tree_area = {{x - radius, y-radius}, {x + radius, y+radius}}
-		for i, tree in pairs(surface.find_entities_filtered{type = "tree", area=tree_area}) do
+
+	local function clear_obstructions(area)
+		for i, tree in pairs(find_ent{type = "tree", area=area}) do
 			tree.order_deconstruction(force)
 		end
-		for i, rock in pairs(surface.find_entities_filtered{type = "simple-entity", area=tree_area}) do
+		for i, rock in pairs(find_ent{type = "simple-entity", area=area}) do
 			rock.order_deconstruction(force)
 		end
-		for i, cliff in pairs(surface.find_entities_filtered{type = "cliff", limit=1, area=tree_area}) do -- maybe you can answer this -> is this limit required here? I dont think so?
-			if roboport.logistic_network.get_item_count("cliff-explosives") > 0 then
+		for i, cliff in pairs(find_ent{type = "cliff", area=area}) do 
+			if roboport.logistic_network.get_item_count("cliff-explosives") > 10 then
 				cliff.order_deconstruction(force)
 			end
 		end
 	end
-
-	-- this will make sure, that even if paving area isn't large enough to cover the future roboport and poles position we still will be able to place them if we can get rid of obstacles
-	if settings.global["concreep range"].value * roboport.logistic_cell.construction_radius / 100 < roboport.logistic_cell.logistic_radius+3 then -- +3 can be changed to roboport.tile_width once we require version 1.1.64
-		clear_obstructions(target_robo_pos_x,            target_robo_pos_y,4) -- clearing area for roboport
-		clear_obstructions(target_robo_pos_x,            target_pole_pos_y_minus_half,3) -- clearing area for power pole y axis
-		clear_obstructions(target_pole_pos_x_minus_half, target_pole_pos_y,3) -- clearing area for power pole x axis
+	-- can't build in uncharted areas
+	local function force_chart (x,y,r)
+		force.chart(surface,{{x-r, y-r},{x+r, y+r}})
 	end
-	-- cant build in uncharted areas
-	local chart_radius = settings.global["concreep range"].value * roboport.logistic_cell.construction_radius / 100
-	force.chart(surface, {{target_robo_pos_x            - chart_radius, target_robo_pos_y            - chart_radius}, {target_robo_pos_x            + chart_radius, target_robo_pos_y            + chart_radius}})
-	force.chart(surface, {{target_robo_pos_x            - chart_radius, target_pole_pos_y_minus_half - chart_radius}, {target_robo_pos_x            + chart_radius, target_pole_pos_y_minus_half + chart_radius}})
-	force.chart(surface, {{target_pole_pos_x_minus_half - chart_radius, target_robo_pos_y            - chart_radius}, {target_pole_pos_x_minus_half + chart_radius, target_robo_pos_y            + chart_radius}})
-
+	-- starting the real hypercreep
 	if (
-		can_create{name="entity-ghost",     position={target_robo_pos_x, target_robo_pos_y}, inner_name=roboport.name, force=force} and
-		can_create{name="entity-ghost",     position={target_robo_pos_x, target_pole_pos_y}, inner_name=pole_type    , force=force} and not
-		has_value(placed_ports_positions,            {target_robo_pos_x, target_robo_pos_y}) and not
-		has_value(placed_poles_positions,            {target_robo_pos_x, target_pole_pos_y}) -- doing this as the game does place multiple power poles on top of each other (and roboports), if we do it all in one frame - not entirely sure how to circumvent that any other way than this
+		can_create{name="entity-ghost", position={target_robo_pos_x, target_robo_pos_y}, inner_name=roboport.name, force=force, build_check_type=manual_ghost} and
+		can_create{name="entity-ghost", position={target_robo_pos_x, target_pole_pos_y}, inner_name=pole_name    , force=force, build_check_type=manual_ghost} and not
+		has_value(placed_ports_positions,        {target_robo_pos_x, target_robo_pos_y}) and not
+		has_value(placed_poles_positions,        {target_robo_pos_x, target_pole_pos_y}) -- doing this as the game does place multiple power poles on top of each other (and roboports), if we do it all in one frame - not entirely sure how to circumvent that any other way than this
 	) then
-		create{name="entity-ghost",         position={target_robo_pos_x, target_robo_pos_y}, inner_name=roboport.name, force=force, expires=false}
-		to_list(placed_ports_positions,              {target_robo_pos_x, target_robo_pos_y})
-		create{name="entity-ghost",         position={target_robo_pos_x, target_pole_pos_y}, inner_name=pole_type    , force=force, expires=false}
-		to_list(placed_poles_positions,              {target_robo_pos_x, target_pole_pos_y})
-	end
-	
-	if (target_robo_pos_y ~= roboport_y_pos) then -- we are expanding vertically
+		force_chart(                              target_robo_pos_x, target_robo_pos_y,chart_radius)
+		create{name="entity-ghost",     position={target_robo_pos_x, target_robo_pos_y}, inner_name=roboport.name, force=force, expires=false}
+		to_list(placed_ports_positions,          {target_robo_pos_x, target_robo_pos_y})
+		create{name="entity-ghost",     position={target_robo_pos_x, target_pole_pos_y}, inner_name=pole_name    , force=force, expires=false}
+		to_list(placed_poles_positions,          {target_robo_pos_x, target_pole_pos_y})
+	elseif not (
+		can_create{name="entity-ghost", position={target_robo_pos_x, target_robo_pos_y}, inner_name=roboport.name, force=force, build_check_type=manual_ghost} and
+		can_create{name="entity-ghost", position={target_robo_pos_x, target_pole_pos_y}, inner_name=pole_name    , force=force, build_check_type=manual_ghost} and
+		has_value(placed_ports_positions,        {target_robo_pos_x, target_robo_pos_y}) and
+		has_value(placed_poles_positions,        {target_robo_pos_x, target_pole_pos_y})  -- if we cant expand due to ghost not being placable lets check if removing trees, stones and cliffs help us
+	)then
+		local area = {{target_robo_pos_x-port_clearance,target_robo_pos_y-port_clearance},{target_robo_pos_x+port_clearance,target_robo_pos_y+port_clearance}}
+		clear_obstructions(area)
 		if (
-			can_create{name="entity-ghost", position={target_robo_pos_x, target_pole_pos_y_minus_half}, inner_name=pole_type, force=force} and not
-			has_value(placed_poles_positions,        {target_robo_pos_x, target_pole_pos_y_minus_half})
+			can_create{name="entity-ghost", position={target_robo_pos_x, target_robo_pos_y}, inner_name=roboport.name, force=force, build_check_type=manual_ghost} and
+			can_create{name="entity-ghost", position={target_robo_pos_x, target_pole_pos_y}, inner_name=pole_name    , force=force, build_check_type=manual_ghost} -- Let's try this again and check whether we can build now
 		) then
-			create{name="entity-ghost",     position={target_robo_pos_x, target_pole_pos_y_minus_half}   , inner_name=pole_type, force=force, expires=false}
-			to_list(placed_poles_positions,          {target_robo_pos_x, target_pole_pos_y_minus_half}) -- we are expanding vertically, placing an additional power pole in between original roboport and new roboport
+			force_chart(                              target_robo_pos_x, target_robo_pos_y,chart_radius)
+			create{name="entity-ghost",     position={target_robo_pos_x, target_robo_pos_y}, inner_name=roboport.name, force=force, expires=false}
+			to_list(placed_ports_positions,          {target_robo_pos_x, target_robo_pos_y})
+			create{name="entity-ghost",     position={target_robo_pos_x, target_pole_pos_y}, inner_name=pole_name    , force=force, expires=false}
+			to_list(placed_poles_positions,          {target_robo_pos_x, target_pole_pos_y}) -- success, nothing can stop the paved paradise
+		elseif surface.count_tiles_filtered{collision_mask="water-tile", area=area} ~=0 then -- is there water?
+			if settings.global["creep landfill"].value then
+				local water_tiles = surface.find_tiles_filtered{area=area, collision_mask="water-tile"}
+				for k,v in pairs(water_tiles) do
+				surface.create_entity{name="tile-ghost", position=v.position, inner_name="landfill", force=force}
+				end
+				if (
+					can_create{name="entity-ghost", position={target_robo_pos_x, target_robo_pos_y}, inner_name=roboport.name, force=force, build_check_type=script_ghost} and
+					can_create{name="entity-ghost", position={target_robo_pos_x, target_pole_pos_y}, inner_name=pole_name    , force=force, build_check_type=script_ghost} and not
+					has_value(placed_ports_positions,        {target_robo_pos_x, target_robo_pos_y}) and not
+					has_value(placed_poles_positions,        {target_robo_pos_x, target_pole_pos_y}) -- we do script ghost here as those can build on water - landfill still need to get laid here so we need to bridge the time for this
+				)then
+					force_chart(                              target_robo_pos_x, target_robo_pos_y,chart_radius)
+					create{name="entity-ghost",     position={target_robo_pos_x, target_robo_pos_y}, inner_name=roboport.name, force=force, expires=false}
+					to_list(placed_ports_positions,          {target_robo_pos_x, target_robo_pos_y})
+					create{name="entity-ghost",     position={target_robo_pos_x, target_pole_pos_y}, inner_name=pole_name    , force=force, expires=false}
+					to_list(placed_poles_positions,          {target_robo_pos_x, target_pole_pos_y}) -- success, we can walk on water
+				end
+			end
+		end
+	end
+
+	if (target_robo_pos_y ~= roboport_y_pos) then -- we are expanding vertically
+		local temp_pos = target_pole_pos_y
+		for i=1, pole_equal_distance_divider-1 do
+			temp_pos = temp_pos-pole_distance
+			to_list(list_of_y_coordinates, temp_pos)
+		end
+		for i=1, #list_of_y_coordinates do
+			local y = list_of_y_coordinates[i]
+			if (
+				can_create{name="entity-ghost", position={target_robo_pos_x, y}, inner_name=pole_name, force=force, build_check_type=manual_ghost} and not
+				has_value(placed_poles_positions,        {target_robo_pos_x, y}) -- can we build here?
+			) then
+				force_chart(                              target_robo_pos_x, y,2)
+				create{name="entity-ghost",     position={target_robo_pos_x, y}   , inner_name=pole_name, force=force, expires=false}
+				to_list(placed_poles_positions,          {target_robo_pos_x, y}) -- we are expanding vertically, placing an additional power pole in between original roboport and new roboport
+			elseif not (
+				can_create{name="entity-ghost", position={target_robo_pos_x, y}, inner_name=pole_name, force=force, build_check_type=manual_ghost} and
+				has_value(placed_poles_positions,        {target_robo_pos_x, y}) -- if we cant expand due to ghost not being placable lets check if removing trees, stones and cliffs help us
+			)then
+				local area = {{target_robo_pos_x-pole_clearance,y-pole_clearance},{target_robo_pos_x+pole_clearance,y+pole_clearance}}
+				clear_obstructions(area)
+				if can_create{name="entity-ghost", position={target_robo_pos_x, y}, inner_name=pole_name, force=force, build_check_type=manual_ghost} then -- Let's try this again and check whether we can build now
+					force_chart(                             target_robo_pos_x, y,2)
+					create{name="entity-ghost",    position={target_robo_pos_x, y}   , inner_name=pole_name, force=force, expires=false}
+					to_list(placed_poles_positions,         {target_robo_pos_x, y}) -- success, nothing can stop the paved paradise
+				elseif surface.count_tiles_filtered{collision_mask="water-tile", area=area} ~=0 then -- is there water?
+					if settings.global["creep landfill"].value then
+						local water_tiles = surface.find_tiles_filtered{area=area, collision_mask="water-tile"}
+						for k,v in pairs(water_tiles) do
+						surface.create_entity{name="tile-ghost", position=v.position, inner_name="landfill", force=force}
+						end
+						if (
+							can_create{name="entity-ghost", position={target_robo_pos_x, y}, inner_name=pole_name    , force=force, build_check_type=script_ghost} and not -- we do script ghost here as those can build on water - landfill still need to get laid here so we need to bridge the time for this
+							has_value(placed_poles_positions,        {target_robo_pos_x, y})
+						) then
+							force_chart(                              target_robo_pos_x, y,2)
+							create{name="entity-ghost",     position={target_robo_pos_x, y}, inner_name=pole_name    , force=force, expires=false}
+							to_list(placed_poles_positions,          {target_robo_pos_x, y}) -- success, we can walk on water
+						end
+					end
+				end
+			end
 		end
 	end
 	if (target_robo_pos_x ~= roboport_x_pos) then -- no we repeat everything if we had expanded horizontaly
-		if (
-			can_create{name="entity-ghost", position={target_pole_pos_x_minus_half, target_pole_pos_y}     , inner_name=pole_type, force=force} and not
-			has_value(placed_poles_positions,        {target_pole_pos_x_minus_half, target_pole_pos_y})
-		) then
-			create{name="entity-ghost",     position={target_pole_pos_x_minus_half, target_pole_pos_y}     , inner_name=pole_type, force=force, expires=false}
-			to_list(placed_poles_positions,          {target_pole_pos_x_minus_half, target_pole_pos_y}) -- we are expanding horizontaly, placing an additional power pole in between original roboport and new roboport
+		local temp_pos = target_robo_pos_x
+		for i=1, pole_equal_distance_divider-1 do
+			temp_pos = temp_pos-pole_distance
+			to_list(list_of_x_coordinates, temp_pos)
+		end
+		for i=1, #list_of_x_coordinates do
+			local x = list_of_x_coordinates[i]
+			if (
+				can_create{name="entity-ghost", position={x, target_pole_pos_y}     , inner_name=pole_name, force=force, build_check_type=manual_ghost} and not
+				has_value(placed_poles_positions,        {x, target_pole_pos_y}) -- can we build here?
+			) then
+				force_chart(                              x, target_pole_pos_y,2)
+				create{name="entity-ghost",     position={x, target_pole_pos_y}     , inner_name=pole_name, force=force, expires=false}
+				to_list(placed_poles_positions,          {x, target_pole_pos_y}) -- we are expanding horizontaly, placing an additional power pole in between original roboport and new roboport
+			elseif not (
+				can_create{name="entity-ghost", position={x, target_pole_pos_y}, inner_name=pole_name, force=force, build_check_type=manual_ghost} and
+				has_value(placed_poles_positions,        {x, target_pole_pos_y}) -- if we cant expand due to ghost not being placable lets check if removing trees, stones and cliffs help us
+			)then
+				local area = {{x-pole_clearance,target_pole_pos_y-pole_clearance},{x+pole_clearance,target_pole_pos_y+pole_clearance}}
+				clear_obstructions(area)
+				if can_create{name="entity-ghost", position={x, target_pole_pos_y}, inner_name=pole_name, force=force, build_check_type=manual_ghost} then -- Let's try this again and check whether we can build now
+					force_chart(                             x, target_pole_pos_y,2)
+					create{name="entity-ghost",    position={x, target_pole_pos_y}   , inner_name=pole_name, force=force, expires=false}
+					to_list(placed_poles_positions,         {x, target_pole_pos_y}) -- success, nothing can stop the paved paradise
+				elseif surface.count_tiles_filtered{collision_mask="water-tile", area=area} ~=0 then -- is there water?
+					if settings.global["creep landfill"].value then
+						local water_tiles = surface.find_tiles_filtered{area=area, collision_mask="water-tile"}
+						for k,v in pairs(water_tiles) do
+						surface.create_entity{name="tile-ghost", position=v.position, inner_name="landfill", force=force}
+						end
+						if (
+							can_create{name="entity-ghost", position={x, target_pole_pos_y}, inner_name=pole_name    , force=force, build_check_type=script_ghost} and not-- we do script ghost here as those can build on water - landfill still need to get laid here so we need to bridge the time for this
+							has_value(placed_poles_positions,        {x, target_pole_pos_y})
+						) then
+							force_chart(                              x, target_pole_pos_y,2)
+							create{name="entity-ghost",     position={x, target_pole_pos_y}, inner_name=pole_name    , force=force, expires=false}
+							to_list(placed_poles_positions,          {x, target_pole_pos_y}) -- success, we can walk on water
+						end
+					end
+				end
+			end
 		end
 	end
 end
 
 function hypercreep(roboport)
+	pole = game.entity_prototypes["big-electric-pole"] -- having this here for a future idea - let user chose what pole to use -> base the interval of the poles on the wire distance max of that pole type
 	debug_print_function_was_called("hypercreep")
+	local selected_pole = pole
 	local roboport_item_count = roboport.logistic_network.get_item_count("roboport")
-	local power_pole_item_count = roboport.logistic_network.get_item_count(pole_type)
+	local power_pole_item_count = roboport.logistic_network.get_item_count(selected_pole.name)
 	if (roboport_item_count < 8 or power_pole_item_count < 20) then
 		debug_print("Not enough roboports/power poles to hyprecreep")
 		return
@@ -146,14 +266,17 @@ function hypercreep(roboport)
 	local roboport_y = roboport.position.y
 	placed_ports_positions = {}
 	placed_poles_positions = {} -- initializing/resetting these here so we get rid of the junk from last time
-	hypercreep_builder(roboport_x + logistic_diameter, roboport_y                    , offset_power_poles, roboport, pole_type)
-	hypercreep_builder(roboport_x - logistic_diameter, roboport_y                    , offset_power_poles, roboport, pole_type)
-	hypercreep_builder(roboport_x                    , roboport_y + logistic_diameter, offset_power_poles, roboport, pole_type)
-	hypercreep_builder(roboport_x                    , roboport_y - logistic_diameter, offset_power_poles, roboport, pole_type)
-	hypercreep_builder(roboport_x + logistic_diameter, roboport_y + logistic_diameter, offset_power_poles, roboport, pole_type)
-	hypercreep_builder(roboport_x - logistic_diameter, roboport_y - logistic_diameter, offset_power_poles, roboport, pole_type)
-	hypercreep_builder(roboport_x + logistic_diameter, roboport_y - logistic_diameter, offset_power_poles, roboport, pole_type)
-	hypercreep_builder(roboport_x - logistic_diameter, roboport_y + logistic_diameter, offset_power_poles, roboport, pole_type)
+	hypercreep_builder(roboport_x + logistic_diameter, roboport_y                    , offset_power_poles, roboport, selected_pole)
+	hypercreep_builder(roboport_x - logistic_diameter, roboport_y                    , offset_power_poles, roboport, selected_pole)
+	hypercreep_builder(roboport_x                    , roboport_y + logistic_diameter, offset_power_poles, roboport, selected_pole)
+	hypercreep_builder(roboport_x                    , roboport_y - logistic_diameter, offset_power_poles, roboport, selected_pole)
+	--####################################################################################################
+	--I would love to keep those 4 lines beneath, but cant really figure out how to make it work without it screwing up the placement algorithm - these lines would make the spreading much more even
+	--####################################################################################################
+	--hypercreep_builder(roboport_x + logistic_diameter, roboport_y + logistic_diameter, offset_power_poles, roboport, selected_pole)
+	--hypercreep_builder(roboport_x - logistic_diameter, roboport_y - logistic_diameter, offset_power_poles, roboport, selected_pole)
+	--hypercreep_builder(roboport_x + logistic_diameter, roboport_y - logistic_diameter, offset_power_poles, roboport, selected_pole)
+	--hypercreep_builder(roboport_x - logistic_diameter, roboport_y + logistic_diameter, offset_power_poles, roboport, selected_pole) 
 end
 -- a fake coroutine
 function reinit()

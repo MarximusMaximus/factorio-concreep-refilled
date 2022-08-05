@@ -20,7 +20,8 @@
         "settings",
         "defines",
         "script",
-        "data"
+        "data",
+        "distance"
     ],
     "factorio.versions": [
         {
@@ -28,5 +29,8 @@
             "factorioPath": "d:\\SteamLibrary22\\steamapps\\common\\Factorio\\bin\\x64\\factorio.exe",
             "active": true
         }
+    ],
+    "Lua.diagnostics.disable": [
+        "lowercase-global"
     ]
 }
