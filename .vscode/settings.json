@@ -21,5 +21,12 @@
         "defines",
         "script",
         "data"
+    ],
+    "factorio.versions": [
+        {
+            "name": "1.1.62",
+            "factorioPath": "d:\\SteamLibrary22\\steamapps\\common\\Factorio\\bin\\x64\\factorio.exe",
+            "active": true
+        }
     ]
 }
