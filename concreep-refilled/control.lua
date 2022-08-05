@@ -1,5 +1,6 @@
 DEBUG_PREFIX = "Concreep: "
 pole_type="big-electric-pole" -- having this here for a future idea - let user chose what pole to use -> base the interval of the poles on the wire distance max of that pole type
+
 function array_concat(t1, t2)
 	local t3 = {}
 	for i=1, #t1 do
@@ -145,7 +146,7 @@ function hypercreep(roboport)
 
 	local roboport_item_count = roboport.logistic_network.get_item_count("roboport")
 	local power_pole_item_count = roboport.logistic_network.get_item_count(pole_type)
-	if (roboport_item_count < 4 or power_pole_item_count < 4) then
+	if (roboport_item_count < 8 or power_pole_item_count < 20) then
 		debug_print("Not enough roboports/power poles to hyprecreep")
 		return
 	end
@@ -423,7 +424,6 @@ function creep(creeper)
 		" refined: " .. refined_concrete_count ..
 		" landfill: " .. landfill_count
 	)
-	local available_worker_count = math.max(0, roboport.logistic_network.available_construction_robots - settings.global["minimum robot"].value)
 	if roboport.logistic_network.available_construction_robots <= settings.global["minimum robot"].value then
 		debug_print("can NOT place - minimum robots")
 		return
@@ -687,8 +687,6 @@ end
 
 function add_creeper_for_roboport(roboport)
 	debug_print_function_was_called("add_creeper_for_roboport")
-
-	local surface = roboport.surface
 	table.insert(global.creepers, {roboport = roboport, radius = settings.global["initial radius"].value})
 end
 
