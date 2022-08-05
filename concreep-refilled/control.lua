@@ -43,17 +43,12 @@ function init()
 
 	global.creepers = {}
 	global.creeper_index = 1
-	global.robots_given_instructions = 0 --not used atm - what was the intention here?
-
 	global.no_work_counter = 0
 	global.reinit_surfaces = {}
 	global.reinit_surface_index = 1
 	global.reinit_current_surface_roboports = {}
 	global.reinit_current_surface_roboport_index = 1
 	global.reinit_level_running = 0
-	global.placed_poles_positions = {}
-	global.placed_roboports_positions = {}
-
 end
 
 function hypercreep_builder(target_robo_pos_x,target_robo_pos_y,offset,roboport,pole_type)
@@ -65,8 +60,11 @@ function hypercreep_builder(target_robo_pos_x,target_robo_pos_y,offset,roboport,
 	local half_distance_x = math.floor((target_robo_pos_x-roboport_x_pos)/2)
 	local half_distance_y = math.floor((target_robo_pos_y-roboport_y_pos)/2)
 	local target_pole_pos_y = target_robo_pos_y+offset
-	local target_pole_pos_y_minus_half_dist = target_robo_pos_y-half_distance_y+offset
+	local target_pole_pos_y_minus_half = target_robo_pos_y-half_distance_y+offset
 	local target_pole_pos_x_minus_half = target_robo_pos_x-half_distance_x
+	local to_list = table.insert
+	local can_create = surface.can_place_entity 
+	local create = surface.create_entity -- faster to cache these functions as to always call them
 	local function has_value (t, v)
 		for i=1,#t do
 			if t[i] == v then
@@ -78,72 +76,64 @@ function hypercreep_builder(target_robo_pos_x,target_robo_pos_y,offset,roboport,
 	local function clear_obstructions(x,y,radius)
 		local tree_area = {{x - radius, y-radius}, {x + radius, y+radius}}
 		for i, tree in pairs(surface.find_entities_filtered{type = "tree", area=tree_area}) do
-			tree.order_deconstruction(roboport.force)
+			tree.order_deconstruction(force)
 		end
 		for i, rock in pairs(surface.find_entities_filtered{type = "simple-entity", area=tree_area}) do
-			rock.order_deconstruction(roboport.force)
+			rock.order_deconstruction(force)
 		end
 		for i, cliff in pairs(surface.find_entities_filtered{type = "cliff", limit=1, area=tree_area}) do -- maybe you can answer this -> is this limit required here? I dont think so?
 			if roboport.logistic_network.get_item_count("cliff-explosives") > 0 then
-				cliff.order_deconstruction(roboport.force)
+				cliff.order_deconstruction(force)
 			end
 		end
 	end
 
 	-- this will make sure, that even if paving area isn't large enough to cover the future roboport and poles position we still will be able to place them if we can get rid of obstacles
-	if settings.global["concreep range"].value * roboport.logistic_cell.construction_radius / 100 < roboport.logistic_cell.logistic_radius+3 then -- +3 can be changed to roboport.tile_width once we demand version 1.1.64
-		clear_obstructions(target_robo_pos_x, target_robo_pos_y,4) -- clearing area for roboport
-		clear_obstructions(target_robo_pos_x,target_pole_pos_y_minus_half_dist,2) -- clearing area for power pole y axis
-		clear_obstructions(target_pole_pos_x_minus_half,target_pole_pos_y,2) -- clearing area for power pole x axis
+	if settings.global["concreep range"].value * roboport.logistic_cell.construction_radius / 100 < roboport.logistic_cell.logistic_radius+3 then -- +3 can be changed to roboport.tile_width once we require version 1.1.64
+		clear_obstructions(target_robo_pos_x,            target_robo_pos_y,4) -- clearing area for roboport
+		clear_obstructions(target_robo_pos_x,            target_pole_pos_y_minus_half,3) -- clearing area for power pole y axis
+		clear_obstructions(target_pole_pos_x_minus_half, target_pole_pos_y,3) -- clearing area for power pole x axis
 	end
 	-- cant build in uncharted areas
 	local chart_radius = settings.global["concreep range"].value * roboport.logistic_cell.construction_radius / 100
-	force.chart(surface, {{target_robo_pos_x            - chart_radius, target_robo_pos_y - chart_radius}                 , {target_robo_pos_x            + chart_radius, target_robo_pos_y                 + chart_radius}})
-	force.chart(surface, {{target_robo_pos_x            - chart_radius, target_pole_pos_y_minus_half_dist - chart_radius} , {target_robo_pos_x            + chart_radius, target_pole_pos_y_minus_half_dist	+ chart_radius}})
-	force.chart(surface, {{target_pole_pos_x_minus_half - chart_radius, target_robo_pos_y - chart_radius}                 , {target_pole_pos_x_minus_half + chart_radius, target_robo_pos_y                 + chart_radius}})
+	force.chart(surface, {{target_robo_pos_x            - chart_radius, target_robo_pos_y            - chart_radius}, {target_robo_pos_x            + chart_radius, target_robo_pos_y            + chart_radius}})
+	force.chart(surface, {{target_robo_pos_x            - chart_radius, target_pole_pos_y_minus_half - chart_radius}, {target_robo_pos_x            + chart_radius, target_pole_pos_y_minus_half + chart_radius}})
+	force.chart(surface, {{target_pole_pos_x_minus_half - chart_radius, target_robo_pos_y            - chart_radius}, {target_pole_pos_x_minus_half + chart_radius, target_robo_pos_y            + chart_radius}})
 
 	if (
-		surface.can_place_entity{name="entity-ghost", position={target_robo_pos_x,target_robo_pos_y}, inner_name=roboport.name, force=force} and
-		surface.can_place_entity{name="entity-ghost", position={target_robo_pos_x,target_pole_pos_y}, inner_name=pole_type    , force=force} and
-		has_value(global.placed_roboports_positions,           {target_robo_pos_x,target_robo_pos_y}) == false and
-		has_value(global.placed_poles_positions,               {target_robo_pos_x,target_pole_pos_y}) == false -- doing this as the game does place multiple power poles on top of each other (and roboports), if we do it all in one frame - not entirely sure how to circumvent that any other way than this
+		can_create{name="entity-ghost",     position={target_robo_pos_x, target_robo_pos_y}, inner_name=roboport.name, force=force} and
+		can_create{name="entity-ghost",     position={target_robo_pos_x, target_pole_pos_y}, inner_name=pole_type    , force=force} and not
+		has_value(placed_ports_positions,            {target_robo_pos_x, target_robo_pos_y}) and not
+		has_value(placed_poles_positions,            {target_robo_pos_x, target_pole_pos_y}) -- doing this as the game does place multiple power poles on top of each other (and roboports), if we do it all in one frame - not entirely sure how to circumvent that any other way than this
 	) then
-		surface.create_entity{name="entity-ghost", position={target_robo_pos_x, target_robo_pos_y}, inner_name=roboport.name, force=force, expires=false}
-		table.insert(global.placed_roboports_positions,     {target_robo_pos_x, target_robo_pos_y})
-		surface.create_entity{name="entity-ghost", position={target_robo_pos_x, target_pole_pos_y}, inner_name=pole_type    , force=force, expires=false}
-		table.insert(global.placed_poles_positions,         {target_robo_pos_x, target_pole_pos_y})
+		create{name="entity-ghost",         position={target_robo_pos_x, target_robo_pos_y}, inner_name=roboport.name, force=force, expires=false}
+		to_list(placed_ports_positions,              {target_robo_pos_x, target_robo_pos_y})
+		create{name="entity-ghost",         position={target_robo_pos_x, target_pole_pos_y}, inner_name=pole_type    , force=force, expires=false}
+		to_list(placed_poles_positions,              {target_robo_pos_x, target_pole_pos_y})
 	end
 	
 	if (target_robo_pos_y ~= roboport_y_pos) then -- we are expanding vertically
 		if (
-			surface.can_place_entity{name="entity-ghost", position={target_robo_pos_x,target_pole_pos_y_minus_half_dist}, inner_name=pole_type, force=force} and not
-			has_value(global.placed_poles_positions,               {target_robo_pos_x,target_pole_pos_y_minus_half_dist})
+			can_create{name="entity-ghost", position={target_robo_pos_x, target_pole_pos_y_minus_half}, inner_name=pole_type, force=force} and not
+			has_value(placed_poles_positions,        {target_robo_pos_x, target_pole_pos_y_minus_half})
 		) then
-			surface.create_entity{name="entity-ghost", position={target_robo_pos_x,target_pole_pos_y_minus_half_dist}   , inner_name=pole_type, force=force, expires=false}
-			table.insert(global.placed_poles_positions,         {target_robo_pos_x,target_pole_pos_y_minus_half_dist}) -- we are expanding vertically, placing an additional power pole in between original roboport and new roboport
+			create{name="entity-ghost",     position={target_robo_pos_x, target_pole_pos_y_minus_half}   , inner_name=pole_type, force=force, expires=false}
+			to_list(placed_poles_positions,          {target_robo_pos_x, target_pole_pos_y_minus_half}) -- we are expanding vertically, placing an additional power pole in between original roboport and new roboport
 		end
 	end
 	if (target_robo_pos_x ~= roboport_x_pos) then -- no we repeat everything if we had expanded horizontaly
 		if (
-			surface.can_place_entity{name="entity-ghost", position={target_pole_pos_x_minus_half,target_pole_pos_y}     , inner_name=pole_type, force=force} and not
-			has_value(global.placed_poles_positions,               {target_pole_pos_x_minus_half,target_pole_pos_y})
+			can_create{name="entity-ghost", position={target_pole_pos_x_minus_half, target_pole_pos_y}     , inner_name=pole_type, force=force} and not
+			has_value(placed_poles_positions,        {target_pole_pos_x_minus_half, target_pole_pos_y})
 		) then
-			surface.create_entity{name="entity-ghost", position={target_pole_pos_x_minus_half,target_pole_pos_y}        , inner_name=pole_type, force=force, expires=false}
-			table.insert(global.placed_poles_positions,         {target_pole_pos_x_minus_half,target_pole_pos_y}) -- we are expanding horizontaly, placing an additional power pole in between original roboport and new roboport
+			create{name="entity-ghost",     position={target_pole_pos_x_minus_half, target_pole_pos_y}     , inner_name=pole_type, force=force, expires=false}
+			to_list(placed_poles_positions,          {target_pole_pos_x_minus_half, target_pole_pos_y}) -- we are expanding horizontaly, placing an additional power pole in between original roboport and new roboport
 		end
 	end
 end
 
 function hypercreep(roboport)
 	debug_print_function_was_called("hypercreep")
-
-	if not global.placed_poles_positions then
-		global.placed_poles_positions = {}
-	end
-	if not global.placed_roboports_positions then
-		global.placed_roboports_positions = {}
-	end -- this is temporary, if we merged and updated version number, this wont be necessary, just used for testing so old saves dont crash
-
 	local roboport_item_count = roboport.logistic_network.get_item_count("roboport")
 	local power_pole_item_count = roboport.logistic_network.get_item_count(pole_type)
 	if (roboport_item_count < 8 or power_pole_item_count < 20) then
@@ -154,6 +144,8 @@ function hypercreep(roboport)
 	local logistic_diameter = roboport.logistic_cell.logistic_radius * 2
 	local roboport_x = roboport.position.x
 	local roboport_y = roboport.position.y
+	placed_ports_positions = {}
+	placed_poles_positions = {} -- initializing/resetting these here so we get rid of the junk from last time
 	hypercreep_builder(roboport_x + logistic_diameter, roboport_y                    , offset_power_poles, roboport, pole_type)
 	hypercreep_builder(roboport_x - logistic_diameter, roboport_y                    , offset_power_poles, roboport, pole_type)
 	hypercreep_builder(roboport_x                    , roboport_y + logistic_diameter, offset_power_poles, roboport, pole_type)
@@ -174,10 +166,6 @@ function reinit()
 	if not global.creeper_index then
 		global.creeper_index = 1
 	end
-	if not global.robots_given_instructions then
-		global.robots_given_instructions = 0
-	end
-
 	if not global.no_work_counter then
 		global.no_work_counter = 0
 	end
@@ -196,13 +184,6 @@ function reinit()
 	if not global.reinit_level_running then
 		global.reinit_level_running = 0
 	end
-	if not global.placed_poles_positions then
-		global.placed_poles_positions = {}
-	end
-	if not global.placed_roboports_positions then
-		global.placed_roboports_positions = {}
-	end
-
 	-- okay, do the real work now
 	_reinit_reentrant()
 end
@@ -339,8 +320,6 @@ end
 
 function _reinit_reentrant_level2_end()
 	debug_print_coroutine_was_called("_reinit_reentrant_level2_end()")
-	global.placed_poles_positions = {}
-	global.placed_roboports_positions = {} -- reset list of placed poles and roboports so the array of positions doesnt get to big, and we shouldnt need the old positions anymore
 	global.reinit_level_running = 1
 
 	-- need to manually increment outer loop as the inner loop ends
@@ -699,9 +678,6 @@ function is_valid_roboport_tile_names()
 		end
 		table.remove(global.creepers, i)
 	end
-	global.placed_poles_positions = {}
-	global.placed_roboports_positions = {} -- adding this here as this function is called via script.on_configuration_changed; meaning it will be called when we update, otherwise old saves will crash due to globals being nil
-	global.placed_roboports_positions = {}
 end
 
 function runtime_settings_changed()
