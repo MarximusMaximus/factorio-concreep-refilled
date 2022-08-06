@@ -10,9 +10,23 @@
         "utoxin"
     ],
     "workbench.colorCustomizations": {
-        "activityBar.background": "#430B73",
-        "titleBar.activeBackground": "#5E0FA1",
-        "titleBar.activeForeground": "#FEFDFF"
+        "activityBar.background": "#a18b97",
+        "titleBar.activeBackground": "#89707e",
+        "titleBar.activeForeground": "#e7e7e7",
+        "activityBar.activeBackground": "#a18b97",
+        "activityBar.activeBorder": "#c2df9f",
+        "activityBar.foreground": "#15202b",
+        "activityBar.inactiveForeground": "#15202b99",
+        "activityBarBadge.background": "#c2df9f",
+        "activityBarBadge.foreground": "#15202b",
+        "editorGroup.border": "#a18b97",
+        "panel.border": "#a18b97",
+        "sash.hoverBorder": "#a18b97",
+        "sideBar.border": "#a18b97",
+        "tab.activeBorder": "#a18b97",
+        "titleBar.border": "#89707e",
+        "titleBar.inactiveBackground": "#89707e99",
+        "titleBar.inactiveForeground": "#e7e7e799"
     },
     "Lua.diagnostics.globals": [
         "global",
@@ -20,6 +34,14 @@
         "settings",
         "defines",
         "script",
-        "data"
-    ]
+        "data",
+        "mods",
+        "table_size",
+        "log",
+        "localised_print",
+        "serpent",
+        "__DebugAdapter",
+        "__Profiler"
+    ],
+    "peacock.color": "#89707e",
 }

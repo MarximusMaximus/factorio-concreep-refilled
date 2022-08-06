@@ -7,5 +7,11 @@
   "homepage": "https://marximus.com",
   "description": "Roboports automatically place and upgrade concrete and landfill within their reach.",
   "factorio_version": "1.1",
-  "dependencies": ["base >= 1.1.48"]
+  "dependencies": ["base >= 1.1.48"],
+  "package": {
+    "scripts": {
+      "compile": "/opt/conda/miniforge/bin/python ../make_debug.py",
+      "prepackage": "true"
+    }
+  }
 }
