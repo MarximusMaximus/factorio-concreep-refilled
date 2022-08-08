@@ -44,4 +44,7 @@
         "__Profiler"
     ],
     "peacock.color": "#89707e",
+    "Lua.diagnostics.disable": [
+        "lowercase-global"
+    ],
 }
