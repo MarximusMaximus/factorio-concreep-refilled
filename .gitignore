@@ -1,2 +1,6 @@
 *.bak
 build/
+run/
+
+.DS_Store
+__pycache__/

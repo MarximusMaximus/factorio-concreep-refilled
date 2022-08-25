@@ -8,7 +8,7 @@
             "type": "factoriomod",
             "request": "launch",
             "name": "Factorio Mod Debug",
-            "modsPath": "${workspaceFolder}/mods_debug",
+            "modsPath": "${workspaceFolder}/run/mods",
         },
         {
             "type": "factoriomod",
@@ -16,14 +16,14 @@
             "name": "Factorio Mod Debug (Settings & Data)",
             "hookSettings": true,
             "hookData": true,
-            "modsPath": "${workspaceFolder}/mods_debug",
+            "modsPath": "${workspaceFolder}/run/mods",
         },
         {
             "type": "factoriomod",
             "request": "launch",
             "name": "Factorio Mod Debug (Profile)",
             "hookMode": "profile",
-            "modsPath": "${workspaceFolder}/mods_debug",
+            "modsPath": "${workspaceFolder}/run/mods",
         }
     ]
 }

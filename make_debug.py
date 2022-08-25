@@ -1,24 +1,18 @@
 #! env python3
 
-import json
-import os
-import os.path
+import make_release
 import shutil
-import subprocess
+import sys
 
-os.chdir(os.path.dirname(__file__))
+def make_debug() -> None:
+    ret, outfile = make_release.make_release()
 
-name = "concreep-refilled"
+    if ret != 0:
+        sys.exit(ret)
 
-f = open(f"{name}/info.json")
-text = f.read()
-data = json.loads(text)
-version = data["version"]
+    shutil.rmtree("run/mods", ignore_errors=True)
+    shutil.copytree("mods_debug", "run/mods")
+    shutil.copy2(outfile, "run/mods")
 
-os.makedirs("build", exist_ok=True)
-
-outfile = f"build/{name}_{version}.zip"
-
-subprocess.run(["zip", "-vr", outfile, f"{name}"])
-
-shutil.copy2(outfile, "mods_debug")
+if __name__ == "__main__":
+    make_debug()
