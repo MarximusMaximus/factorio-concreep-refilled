@@ -26,8 +26,10 @@
         "tab.activeBorder": "#a18b97",
         "titleBar.border": "#89707e",
         "titleBar.inactiveBackground": "#89707e99",
-        "titleBar.inactiveForeground": "#e7e7e799"
+        "titleBar.inactiveForeground": "#e7e7e799",
+        "commandCenter.border": "#e7e7e799"
     },
+    "peacock.color": "#89707e",
     "Lua.diagnostics.globals": [
         "global",
         "game",
@@ -43,7 +45,6 @@
         "__DebugAdapter",
         "__Profiler"
     ],
-    "peacock.color": "#89707e",
     "Lua.diagnostics.disable": [
         "lowercase-global"
     ],
