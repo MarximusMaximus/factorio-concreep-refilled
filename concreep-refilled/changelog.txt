@@ -1,5 +1,8 @@
 ---------------------------------------------------------------------------------------------------
-Version: 1.0.0
+Version: 1.0.1
+Date: 2023-09-12
+  Changes:
+    - Toggle to not deconstruct entitities.
 Date: 2021-11-29
   Changes:
     - FORKED from Concreep 1.4.6
