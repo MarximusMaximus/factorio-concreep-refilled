@@ -334,20 +334,22 @@ function creep(creeper)
 			debug_print("can NOT place " .. type)
 			return
 		end
-		local tree_area = {{position.x - 0.2,  position.y - 0.2}, {position.x + 0.8, position.y + 0.8}}
-		for i, tree in pairs(surface.find_entities_filtered{type = "tree", area=tree_area}) do
-			tree.order_deconstruction(roboport.force)
-			count = count + 1
-		end
-		for i, rock in pairs(surface.find_entities_filtered{type = "simple-entity", area=tree_area}) do
-			rock.order_deconstruction(roboport.force)
-			count = count + 1
-		end
-		for i, cliff in pairs(surface.find_entities_filtered{type = "cliff", limit=1, area=tree_area}) do
-			if roboport.logistic_network.get_item_count("cliff-explosives") > 0 then
-				cliff.order_deconstruction(roboport.force)
+		if settings.global["creep deconstruct"].value then
+			local tree_area = {{position.x - 0.2,  position.y - 0.2}, {position.x + 0.8, position.y + 0.8}}
+			for i, tree in pairs(surface.find_entities_filtered{type = "tree", area=tree_area}) do
+				tree.order_deconstruction(roboport.force)
 				count = count + 1
-				--roboport.logistic_network.remove_item({name="cliff-explosives", 1})
+			end
+			for i, rock in pairs(surface.find_entities_filtered{type = "simple-entity", area=tree_area}) do
+				rock.order_deconstruction(roboport.force)
+				count = count + 1
+			end
+			for i, cliff in pairs(surface.find_entities_filtered{type = "cliff", limit=1, area=tree_area}) do
+				if roboport.logistic_network.get_item_count("cliff-explosives") > 0 then
+					cliff.order_deconstruction(roboport.force)
+					count = count + 1
+					--roboport.logistic_network.remove_item({name="cliff-explosives", 1})
+				end
 			end
 		end
 	end
